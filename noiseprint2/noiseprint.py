@@ -1,3 +1,5 @@
+import logging
+
 from PIL import Image
 from tensorflow.python.keras.layers import Conv2D, BatchNormalization, Activation
 
@@ -43,6 +45,9 @@ def _full_conv_net(num_levels=17, padding='SAME'):
 
 
 def setup_session():
+    """
+    Set the session allow_growth option for GPU usage
+    """
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     session = tf.compat.v1.Session(config=config)
@@ -50,14 +55,17 @@ def setup_session():
 
 
 class NoiseprintEngine:
-    save_path = os.path.join(os.path.dirname(__file__), './weights/net_jpg%d/')
+    _save_path = os.path.join(os.path.dirname(__file__), './weights/net_jpg%d/')
     slide = 1024  # 3072
     large_limit = 1050000  # 9437184
     overlap = 34
+    setup_on_init = True
 
     def __init__(self):
         self._model = _full_conv_net()
         self._loaded_quality = None
+        if self.setup_on_init:
+            setup_session()
 
     def load_quality(self, quality):
         """
@@ -69,7 +77,8 @@ class NoiseprintEngine:
             raise ValueError("Quality must be between 51 and 101 (included). Provided quality: %d" % quality)
         if quality == self._loaded_quality:
             return
-        checkpoint = self.save_path % quality
+        logging.info("Loading checkpoint quality %d" % quality)
+        checkpoint = self._save_path % quality
         self._model.load_weights(checkpoint)
         self._loaded_quality = quality
 
